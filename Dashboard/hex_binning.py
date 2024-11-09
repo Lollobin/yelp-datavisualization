@@ -35,17 +35,19 @@ def create_hexbin_plot(df):
     )
     p.add_tile(xyz.CartoDB.Positron, retina=True)
     p.grid.visible = False
+    
+    
+    p.hexbin(
+        df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False
+    )
 
-    p.hexbin(df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False)
-
-    p.scatter(
+    p.circle(
         x="x",
         y="y",
         source=source,
-        size=3,
-        fill_color="black",
-        fill_alpha=0.1,
-        line_color=None,
+        radius=20,
+        color="blue",
+        alpha=0.1,
         selection_color="red",
     )
 

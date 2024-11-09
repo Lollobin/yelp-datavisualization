@@ -32,27 +32,29 @@ def create_scatter_plot(df_business, weekdays):
         )
 
     # Set up Bokeh plot
-    source = ColumnDataSource(data=dict(x=[], y=[], color=[], day=[]))
+    #source = ColumnDataSource(data=dict(x=[], y=[], color=[], day=[]))
+    source = ColumnDataSource(df_business)
 
     plot = figure(
         title="Opening Hours of Businesses",
         x_axis_label="Hours of Opening",
         y_axis_label="Number of Hours Restaurant Remains Open",
-        width=600,
+        width=800,
         tools="wheel_zoom,pan,reset,box_select,lasso_select",
     )
 
     colors = Colorblind[len(weekdays)]
     for i, day in enumerate(weekdays):
-        filtered_df = df_business[df_business[day + "_Open_Duration_Float"].notna()]
+        #filtered_df = df_business[df_business[day + "_Open_Duration_Float"].notna()]
         plot.scatter(
-            filtered_df[day + "_Hour_Of_Opening_Float"],
-            filtered_df[day + "_Open_Duration_Float"],
+            x=day + "_Hour_Of_Opening_Float",
+            y=day + "_Open_Duration_Float",
+            source=source,
             color=colors[i],
             size=7,
             alpha=0.3,
             legend_label=day,
-            selection_color="red",
+            selection_color="red",          
         )
 
     plot.legend.click_policy = "hide"

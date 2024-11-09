@@ -51,16 +51,16 @@ opening_slider = Slider(
 )
 
 # Initial plot update
-update_plot(
-    None,
-    None,
-    None,
-    df_business,
-    scatter_source,
-    weekdays,
-    hours_slider.value,
-    opening_slider.value,
-)
+#update_plot(
+#    None,
+#    None,
+#    None,
+#    df_business,
+#    scatter_source,
+#    weekdays,
+#    hours_slider.value,
+#    opening_slider.value,
+#)
 
 # Add interaction
 hours_slider.on_change(
@@ -90,27 +90,23 @@ opening_slider.on_change(
     ),
 )
 
-# Selection syncing
-def link_selections(attr, old, new):
-    
-    selected_indices = test_scatter_source.selected.indices
+
+# Define callback functions for linking and brushing
+def select_on_map(attr, old, new):
+    selected_indices = hexbin_source.selected.indices
+    scatter_source.selected.indices = selected_indices
+
+
+def select_on_scatter(attr, old, new):
+    selected_indices = scatter_source.selected.indices
     hexbin_source.selected.indices = selected_indices
-    #print("selection changed")
 
-# Attach the callback to the scatter plot's selection
-#hexbin_source.selected.on_change("indices", link_selections)
-#scatter_source.selected.on_change("indices", link_selections)
-test_scatter_source.selected.on_change("indices", link_selections)
-
+scatter_source.selected.on_change("indices", select_on_scatter)
+hexbin_source.selected.on_change("indices", select_on_map)
 
 # Layout and add to document
 spacer = Spacer(width=50)
 widgets = column(spacer, hours_slider, opening_slider)
-layout = gridplot(
-    [
-        [widgets, hexbin_plot, test_scatter_plot],
-    ]
-)
+layout = gridplot([[widgets, hexbin_plot, scatter_plot]])
 
 curdoc().add_root(layout)
-print("test")
