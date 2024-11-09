@@ -4,6 +4,7 @@ from bokeh.layouts import column, row, Spacer, gridplot
 from bokeh.models import Slider
 from scatter import create_scatter_plot, update_plot
 from hex_binning import create_hexbin_plot
+from test_scatter import create_test_scatter
 
 
 # Import data
@@ -38,7 +39,8 @@ for day in weekdays:
 
 # Set up Bokeh plots
 scatter_plot, scatter_source = create_scatter_plot(df_business, weekdays)
-hexbin_plot = create_hexbin_plot(df_business)
+hexbin_plot, hexbin_source = create_hexbin_plot(df_business)
+test_scatter_plot, test_scatter_source = create_test_scatter(df_business)
 
 # Sliders for selecting number of hours open and hours of opening
 hours_slider = Slider(
@@ -88,13 +90,27 @@ opening_slider.on_change(
     ),
 )
 
+# Selection syncing
+def link_selections(attr, old, new):
+    
+    selected_indices = test_scatter_source.selected.indices
+    hexbin_source.selected.indices = selected_indices
+    #print("selection changed")
+
+# Attach the callback to the scatter plot's selection
+#hexbin_source.selected.on_change("indices", link_selections)
+#scatter_source.selected.on_change("indices", link_selections)
+test_scatter_source.selected.on_change("indices", link_selections)
+
+
 # Layout and add to document
 spacer = Spacer(width=50)
 widgets = column(spacer, hours_slider, opening_slider)
 layout = gridplot(
     [
-        [widgets, scatter_plot, hexbin_plot],
+        [widgets, hexbin_plot, test_scatter_plot],
     ]
 )
 
 curdoc().add_root(layout)
+print("test")

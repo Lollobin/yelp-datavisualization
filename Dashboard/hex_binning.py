@@ -33,7 +33,7 @@ def create_hexbin_plot(df):
         height=500,
         tools="wheel_zoom,pan,reset,box_select,lasso_select",
     )
-    p.add_tile(xyz.CartoDB.Positron)
+    p.add_tile(xyz.CartoDB.Positron, retina=True)
     p.grid.visible = False
 
     p.hexbin(df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False)
