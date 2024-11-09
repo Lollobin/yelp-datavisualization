@@ -38,7 +38,7 @@ def create_scatter_plot(df_business, weekdays):
         title="Opening Hours of Businesses",
         x_axis_label="Hours of Opening",
         y_axis_label="Number of Hours Restaurant Remains Open",
-        width=800,
+        width=600,
         tools="wheel_zoom,pan,reset,box_select,lasso_select",
     )
 
@@ -52,6 +52,7 @@ def create_scatter_plot(df_business, weekdays):
             size=7,
             alpha=0.3,
             legend_label=day,
+            selection_color="red",
         )
 
     plot.legend.click_policy = "hide"

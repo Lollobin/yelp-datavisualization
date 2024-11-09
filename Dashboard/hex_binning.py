@@ -15,18 +15,11 @@ def create_hexbin_plot(df):
     in_proj = CRS.from_epsg(4326)  # WGS84
     out_proj = CRS.from_epsg(3857)  # Web Mercator
     transformer = Transformer.from_crs(in_proj, out_proj, always_xy=True)
-
-    def latlon_to_web_mercator(lat, lon):
-        x, y = transformer.transform(lon, lat)
-        return x, y
-
     df["x"], df["y"] = zip(
-        *df.apply(lambda x: latlon_to_web_mercator(x.latitude, x.longitude), axis=1)
+        *df.apply(lambda x: transformer.transform(x.longitude, x.latitude), axis=1)
     )
-    max_x = df["x"].max()
-    min_x = df["x"].min()
-    max_y = df["y"].max()
-    min_y = df["y"].min()
+    min_x, max_x = df["x"].min(), df["x"].max()
+    min_y, max_y = df["y"].min(), df["y"].max()
 
     # Create plot
     source = ColumnDataSource(df)
@@ -36,23 +29,14 @@ def create_hexbin_plot(df):
         y_axis_type="mercator",
         x_range=(min_x, max_x),
         y_range=(min_y, max_y),
-        width=800,
-        height=600,
+        width=500,
+        height=500,
         tools="wheel_zoom,pan,reset,box_select,lasso_select",
     )
     p.add_tile(xyz.CartoDB.Positron)
     p.grid.visible = False
 
-    bins = hexbin(df["x"], df["y"], size=500)
-    p.hex_tile(
-        q="q",
-        r="r",
-        source=bins,
-        size=500,
-        line_color=None,
-        fill_alpha=0.5,
-        fill_color=linear_cmap("counts", "Viridis256", 0, max(bins.counts)),
-    )
+    p.hexbin(df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False)
 
     p.scatter(
         x="x",
@@ -62,17 +46,7 @@ def create_hexbin_plot(df):
         fill_color="black",
         fill_alpha=0.1,
         line_color=None,
+        selection_color="red",
     )
 
-    source.selected.js_on_change(
-        "indices",
-        CustomJS(
-            args=dict(source=source),
-            code="""
-        const indices = cb_obj.indices;
-        console.log('Number of selected points:', indices.length);
-    """,
-        ),
-    )
-
-    return p
+    return p, source
