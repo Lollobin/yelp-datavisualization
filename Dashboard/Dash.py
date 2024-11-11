@@ -5,50 +5,79 @@ from bokeh.models import Slider
 from scatter import create_scatter_plot, update_plot
 from hex_binning import create_hexbin_plot
 
-
-# Import data
-#df_business = pd.read_csv("cleaned_businessV2.csv")
-df_business = pd.read_csv("C:/Users/Sadik/Desktop/Data vi proj/datavis-group24/Dashboard/cleaned_businessV2.csv")
-
-
-# Handle NaN values
-df_business = df_business.dropna(subset=["address"])
-
+####################################
+# Configuration
+####################################
 # Define categories of interest and days of the week
 categories_of_interest = ['Chinese', 'Japanese', 'Italian', 'Polish', 'Scandinavian']
 weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-# Create new column containing a specific category of interest
-df_business = df_business.convert_dtypes()
-df_business['category_of_interest'] = "Other"
-for item in categories_of_interest:
-    df_business.loc[df_business['categories'].str.contains(item, na=False), 'category_of_interest'] = item
+####################################
+# Data Processing Functions
+####################################
+def load_data(file_path):
+    # Import data
+    df = pd.read_csv(file_path)
 
-# Process hours of operation for each day
-for day in weekdays:
-    df_business = df_business[df_business["hours_" + day] != "Closed"]
+    # Handle NaN values
+    return df.dropna(subset=["address"])
 
-# Set up Bokeh plots
-scatter_plot, scatter_source = create_scatter_plot(df_business, weekdays)
-hexbin_plot = create_hexbin_plot(df_business)
+def process_categories(df, categories):
+    # Create new column containing a specific category of interest
+    df['category_of_interest'] = "Other"
+    for item in categories:
+        df.loc[df['categories'].str.contains(item, na=False), 'category_of_interest'] = item
+    return df
 
-# Sliders for selecting number of hours open and hours of opening
-hours_slider = Slider(title="Minimum Number of Hours Open", start=0, end=24, value=0, step=0.5)
-opening_slider = Slider(title="Minimum Hours of Opening", start=0, end=24, value=0, step=0.5)
+def filter_hours(df, weekdays):
+    # Process hours of operation for each day
+    for day in weekdays:
+        df = df[df["hours_" + day] != "Closed"]
+    return df
 
-# Initial plot update
-update_plot(None, None, None, df_business, scatter_source, weekdays, hours_slider.value, opening_slider.value)
+#########################################################################
+## Category Filtering Code
+#########################################################################
+selected_categories = ['Burger', 'Chinese', 'Mexican', 'Italian', 'Thai']
 
-# Add interaction
-hours_slider.on_change('value', lambda attr, old, new: update_plot(attr, old, new, df_business, scatter_source, weekdays, hours_slider.value, opening_slider.value))
-opening_slider.on_change('value', lambda attr, old, new: update_plot(attr, old, new, df_business, scatter_source, weekdays, hours_slider.value, opening_slider.value))
+####################################
+# Plot Setup Functions
+####################################
+def setup_plots(df, weekdays):
+    # Set up Bokeh plots
+    scatter_plot, scatter_source = create_scatter_plot(df, weekdays)
+    hexbin_plot = create_hexbin_plot(df)
+    return scatter_plot, scatter_source, hexbin_plot
 
-# Layout and add to document
-spacer = Spacer(width=50)
-widgets = column(spacer, hours_slider, opening_slider)
-layout = gridplot([
-    [widgets, scatter_plot, hexbin_plot],
-    ]
-)
+def setup_sliders(df, scatter_source, weekdays):
+    # Sliders for selecting number of hours open and hours of opening
+    hours_slider = Slider(title="Minimum Number of Hours Open", start=0, end=24, value=0, step=0.5)
+    opening_slider = Slider(title="Minimum Hours of Opening", start=0, end=24, value=0, step=0.5)
 
-curdoc().add_root(layout)
+    hours_slider.on_change('value', lambda attr, old, new: update_plot(attr, old, new, df, scatter_source, weekdays, hours_slider.value, opening_slider.value))
+    opening_slider.on_change('value', lambda attr, old, new: update_plot(attr, old, new, df, scatter_source, weekdays, hours_slider.value, opening_slider.value))
+    
+    return column(Spacer(width=50), hours_slider, opening_slider)
+
+####################################
+# Main Script Execution
+####################################
+def main():
+    file_path = "cleaned_businessV2.csv"
+    # C:/Users/Sadik/Desktop/Data vi proj/datavis-group24/Dashboard/cleaned_businessV2.csv
+    
+    # Load and process data
+    df_business = load_data(file_path)
+    df_business = process_categories(df_business, categories_of_interest)
+    df_business = filter_hours(df_business, weekdays)
+    
+    # Set up plots and widgets
+    scatter_plot, scatter_source, hexbin_plot = setup_plots(df_business, weekdays)
+    widgets = setup_sliders(df_business, scatter_source, weekdays)
+
+    # Layout and add to document
+    layout = gridplot([[widgets, scatter_plot, hexbin_plot]])
+    curdoc().add_root(layout)
+
+# Run the main function
+main()
