@@ -128,7 +128,7 @@ def setup_sliders(df, scatter_source, weekdays):
 # Main Script Execution
 ####################################
 def main():
-    file_path = "cleaned_businessV2.csv"
+    file_path = "../data/cleaned_businessV2.csv"
     # C:/Users/Sadik/Desktop/Data vi proj/datavis-group24/Dashboard/cleaned_businessV2.csv
 
     # Load and process data
