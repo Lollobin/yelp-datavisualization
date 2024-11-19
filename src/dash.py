@@ -1,16 +1,15 @@
 import pandas as pd
 from bokeh.plotting import curdoc
-from bokeh.layouts import column, row, Spacer, gridplot
+from bokeh.layouts import column, Spacer, gridplot
 from bokeh.models import Slider
 from scatter import create_scatter_plot, update_plot
 from hex_binning import create_hexbin_plot
-from test_scatter import create_test_scatter
+from historical_chart import create_historical_chart
 
 ####################################
 # Configuration
 ####################################
-# Define categories of interest and days of the week
-categories_of_interest = ["Chinese", "Japanese", "Italian", "Polish", "Scandinavian"]
+categories_of_interest = ["Burger", "Chinese", "Mexican", "Italian", "Thai"]
 weekdays = [
     "Monday",
     "Tuesday",
@@ -50,11 +49,6 @@ def filter_hours(df, weekdays):
     return df
 
 
-#########################################################################
-## Category Filtering Code
-#########################################################################
-selected_categories = ["Burger", "Chinese", "Mexican", "Italian", "Thai"]
-
 ####################################
 # Plot Setup Functions
 ####################################
@@ -65,9 +59,12 @@ def transfer_selected_indices(attr, old, new, source, target):
     target.selected.indices = selected_indices
 
 
-def setup_plots(df, weekdays):
-    scatter_plot, scatter_source = create_scatter_plot(df, weekdays)
-    hexbin_plot, hexbin_source = create_hexbin_plot(df)
+def setup_plots(df_business, df_grouped_reviews, weekdays):
+    scatter_plot, scatter_source = create_scatter_plot(df_business, weekdays)
+    hexbin_plot, hexbin_source = create_hexbin_plot(df_business)
+    historical_plot = create_historical_chart(
+        df_grouped_reviews, categories_of_interest
+    )
 
     scatter_source.selected.on_change(
         "indices",
@@ -82,7 +79,7 @@ def setup_plots(df, weekdays):
         ),
     )
 
-    return scatter_plot, scatter_source, hexbin_plot, hexbin_source
+    return scatter_plot, scatter_source, hexbin_plot, historical_plot
 
 
 def setup_sliders(df, scatter_source, weekdays):
@@ -128,20 +125,29 @@ def setup_sliders(df, scatter_source, weekdays):
 # Main Script Execution
 ####################################
 def main():
-    file_path = "../data/cleaned_businessV2.csv"
-    # C:/Users/Sadik/Desktop/Data vi proj/datavis-group24/Dashboard/cleaned_businessV2.csv
-
     # Load and process data
-    df_business = load_data(file_path)
+    df_business = load_data("../data/cleaned_businessV2.csv")
     df_business = process_categories(df_business, categories_of_interest)
     df_business = filter_hours(df_business, weekdays)
 
+    df_review = pd.read_csv("../data/crosslisted_reviews.csv")
+    df_review.rename(columns={"stars": "review_stars"}, inplace=True)
+    df_joined = pd.merge(df_business, df_review, on="business_id", how="inner")
+    df_joined = df_joined.convert_dtypes()
+    df_joined = process_categories(df_joined, categories_of_interest)
+    df_joined["Year"] = df_joined["date"].apply(lambda x: x.split("-")[0])
+    df_grouped = df_joined.groupby(["category_of_interest", "Year"])[
+        "review_stars"
+    ].mean()
+
     # Set up plots and widgets
-    scatter_plot, scatter_source, hexbin_plot, hexbin_source = setup_plots(df_business, weekdays)
+    scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
+        df_business, df_grouped, weekdays
+    )
     widgets = setup_sliders(df_business, scatter_source, weekdays)
 
     # Layout and add to document
-    layout = gridplot([[widgets, scatter_plot, hexbin_plot]])
+    layout = gridplot([[widgets, scatter_plot, hexbin_plot], [None, historical_plot]])
     curdoc().add_root(layout)
 
 
