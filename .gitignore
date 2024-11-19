@@ -1,8 +1,4 @@
-#
-data/*
-.tar
-
-
+src/main.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
