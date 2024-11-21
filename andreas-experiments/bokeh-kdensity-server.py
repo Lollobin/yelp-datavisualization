@@ -191,7 +191,6 @@ def remove_contours():
 
     print("fig.renderers", fig.renderers)
 
-
     for key, contours in contours_dict.items():
         for c in contours:
             print("key, contour: ", key, c)
