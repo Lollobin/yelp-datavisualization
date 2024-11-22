@@ -123,6 +123,7 @@ from bokeh.models import CDSView
 from bokeh.layouts import row
 from bokeh.plotting import figure, save, output_file, curdoc
 from bokeh.palettes import Colorblind  # For Colorblind palette
+import time
 
 contours_dict = {}
 
@@ -150,13 +151,13 @@ def kde_plot(fig, x, y, color_palette):
               line_color=color_palette)
     return contour
 
-
-
 # Set up data sources
 source = ColumnDataSource(df_business)
 source_weekdays = ColumnDataSource(data={'days': weekdays})
-print("source_weekdays.data", source_weekdays.data)
-print("source_weekdays.data.values", source_weekdays.data['days'])
+source_rating_groups = ColumnDataSource(data={'Rating_Groups': rating_groups})
+
+# Variable to track the last button press time
+last_press_time = time.time()
 
 # Display checkboxes for rating group and weekdays. Let all be checked upon load
 checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0,3])
@@ -167,12 +168,71 @@ fig = figure(height=400, x_axis_label="Hour of Opening", y_axis_label="Duration"
             background_fill_color="white",
             title="Opening Hours vs Opening Duration Density")
 
-# Recompute contours on click
+
+
+def remove_contours():
+    global contours_dict
+    global fig
+    for key, contours in contours_dict.items():
+        for c in contours:
+            if c in fig.renderers:
+                fig.renderers.remove(c)
+    contours_dict = {}
+
+def compute_kernel_density_plots(attr, old, new):
+    print("Computing contours")
+    # Remove current contours before drawing new
+    if contours_dict != {}:
+        remove_contours()
+
+    days_to_include = source_weekdays.data['days']
+    rating_groups_to_include = source_rating_groups.data['Rating_Groups']
+    print("rating_groups_to_include", rating_groups_to_include)
+    for i, rating_group in enumerate(rating_groups_to_include):
+        df_filtered = df_business[df_business['Rating_Group'] == rating_group]
+
+        df_concatenated_hours_and_durations = get_concatenated_x_and_y_from_days(df_filtered, days_to_include)
+        contour = kde_plot(fig=fig, 
+                        x = df_concatenated_hours_and_durations["Concatenated_Hour_Of_Opening_Float"], 
+                        y = df_concatenated_hours_and_durations["Concatenated_Open_Duration_Float"], 
+                        color_palette=chosen_cb_colors[i])
+        contour.name = "Contour_"+ rating_group
+        contours_dict.setdefault(rating_group, []).append(contour)
+
+    # Wire up the new contours to the checkboxes
+    # Make rating group checkboxes update the source upon click.
+    # Note: The following code works on the assumption that the order of the rating group checkboxes 
+    # ([] Rating 1-2, ...,  [] Rating 4-5) does not change. If we change that order (which 
+    # I do not expect we will) then the following JSCallback may break)
+    # Second note: We run the .js_on_change in here because we want it to rerun every time we recompute
+    # such that the checkboxes get rewired to the new contours
+    # checkboxes_rating_groups.js_on_change("active", CustomJS(args=dict(contours_dict=contours_dict, fig=fig), code="""
+    #     let active = cb_obj.active;                                                                                                                                        
+    #     let keys = Object.keys(contours_dict);    
+    #     console.log("----- Toggling rating groups visibility ------ ");                                                                                                        
+    #     console.log("active: ", active);
+    #     console.log("contours_dict", contours_dict);
+    #     console.log("keys.length", keys.length);                                                                                                     
+                                                                                                                                                                                                    
+    #     for (let i=0; i < keys.length; i++) {
+    #         let contour_key = keys[i]; 
+    #         console.log("contour_key", contour_key);                                                                                                                                                                                                           
+    #         let contour_plot = contours_dict[contour_key][0]; // The value of the dictionary is an array with one element
+    #         console.log("contour_plot", contour_plot);                                                                                                                                                                                                           
+    #         contour_plot.visible = active.includes(i);
+    #         console.log("contour_plot.visible", contour_plot.visible);                                                                                                                                                                                                           
+    #     }
+    #     //console.log("contour_plot.visible", contour_plot.visible);                                                                                                                                                                                                                                                        
+    #     //fig.reset.emit(); // This is what updates the view, such that when a checkbox is pressed, the figure is re-rendered                                                                                                                                                                                                                                                                  
+    #     console.log("----- Toggling rating groups visibility end ------ "); 
+    # """))
+    print("Finished computing contours")
+
+
 checkboxes_weekdays.js_on_change('active', CustomJS(args=dict(source_weekdays=source_weekdays, weekdays=weekdays, fig=fig), code="""
     let active = cb_obj.active;  // Get the indices of checked boxes
     console.log("active indices: ", active);
                                                     
-    
     // Filter the weekdays based on the active indices
     let filtered_days = active.map(i => weekdays[i]);
     
@@ -183,64 +243,53 @@ checkboxes_weekdays.js_on_change('active', CustomJS(args=dict(source_weekdays=so
     console.log("source_weekdays.data", source_weekdays.data);
 """))
 
+# Function to delay firing of an event (namely the countor recomputation) for 2 seconds
+def check_timeout():
+    global last_press_time
+    current_time = time.time()
+    if current_time - last_press_time >= 1:
+        print("No button pressed in the last 1 seconds: Triggering recompute.")
+        # Arguments are required in order to compile, but we don't use them
+        compute_kernel_density_plots(attr="active", old=[], new=[])
 
-def remove_contours():
-    print("in remove_contours")
-    global contours_dict
-    global fig
-
-    print("fig.renderers", fig.renderers)
-
-    for key, contours in contours_dict.items():
-        for c in contours:
-            print("key, contour: ", key, c)
-            if c in fig.renderers:
-                fig.renderers.remove(c)
-                print("removing",c)
-    contours_dict = {}
-
-
-def compute_kernel_density_plots(attr, old, new):
-    # Remove current contours before drawing new
-    if contours_dict != {}:
-        remove_contours()
+# Button callback to update the last press time
+def delayer(attr, old, new):
+    global last_press_time
+    last_press_time = time.time()
     print("ckdp_attr, old, new,", attr, old, new)
+    print("Button pressed: resetting timer.")
+    curdoc().add_timeout_callback(check_timeout, 1000)
 
-    days_to_include = source_weekdays.data['days']
-    for i, rating_group in enumerate(rating_groups):
-        df_filtered = df_business[df_business['Rating_Group'] == rating_group]
-        df_concatenated_hours_and_durations = get_concatenated_x_and_y_from_days(df_filtered, days_to_include)
-        contour = kde_plot(fig=fig, 
-                        x = df_concatenated_hours_and_durations["Concatenated_Hour_Of_Opening_Float"], 
-                        y = df_concatenated_hours_and_durations["Concatenated_Open_Duration_Float"], 
-                        color_palette=chosen_cb_colors[i])
-        contour.name = "Contour_"+ rating_group
-        contours_dict.setdefault(rating_group, []).append(contour)
+#checkboxes_weekdays.on_change("active", compute_kernel_density_plots)
+checkboxes_weekdays.on_change("active", delayer)
+checkboxes_rating_groups.on_change("active", delayer)
 
-# TODO: Let the values of the list "test_days" be controlled by the widgets 
-checkboxes_weekdays.on_change("active", compute_kernel_density_plots)
+# This triggers some js code to update which rating groups we want to compute contours for based
+# on which checkboxes are currently checked
+checkboxes_rating_groups.js_on_change('active', CustomJS(args=dict(source_rating_groups=source_rating_groups, rating_groups=rating_groups, fig=fig), code="""
+    let active = cb_obj.active;  // Get the indices of checked boxes
+    console.log(" ----- Updating source_rating_groups -----");
+    console.log("active indices: ", active);
+                                                    
+    // Filter the rating groups based on the active indices
+    console.log("Filtering rating groups");
+    let filtered_rating_groups = active.map(i => rating_groups[i]);
+    
+    console.log("filtered_rating_groups", filtered_rating_groups);
+                                                         
+    // Update the rating_groups data
+    console.log("Filtering rating groups");                                   
+    source_rating_groups.data = { Rating_Groups: filtered_rating_groups };
+                                                         
+    console.log("source_rating_groups.data", source_rating_groups.data);                                   
+    source_rating_groups.change.emit();  // Notify Bokeh that the data has changed
+    fig.reset.emit();                                                
+    //console.log("source_rating_groups.data", source_rating_groups.data);
+    console.log(" ----- Updating source_rating_groups end -----");
+                                                         
+"""))
 
 for key, value in contours_dict.items(): print(key, value[0].name, value[0])
-
-# Make rating group checkboxes update the source upon click.
-# Note: The following code works on the assumption that the order of the rating group checkboxes 
-# ([] Rating 1-2, ...,  [] Rating 4-5) does not change. If we change that order (which 
-# I do not expect we will) then the following JSCallback may break)
-checkboxes_rating_groups.js_on_change("active", CustomJS(args=dict(contours_dict=contours_dict, fig=fig), code="""
-    let active = cb_obj.active;                                                                                                                                        
-    let keys = Object.keys(contours_dict);    
-                                                                                                            
-    console.log("active: ", active);
-    console.log("contours_dict", contours_dict);
-    console.log("keys.length", keys.length);                                                                                                     
-                                                                                                                                                                                                  
-    for (let i=0; i < keys.length; i++) {
-        let contour_key = keys[i];                                                                                                                                                           
-        let contour_plot = contours_dict[contour_key][0]; // The value of the dictionary is an array with one element
-        contour_plot.visible = active.includes(i);
-    }
-    fig.reset.emit(); // This is what updates the view, such that when a checkbox is pressed, the figure is re-rendered                                                                                                                                                                                                                                                                  
-"""))
 
 fig.grid.level = "overlay"
 fig.grid.grid_line_color = "black"
@@ -249,6 +298,7 @@ fig.grid.grid_line_alpha = 0.05
 # Add the legend as a layout item to the right of the plot.
 #p.add_layout(p.legend, 'right')
 
+# Compute the first kernel density plot.
 compute_kernel_density_plots(attr="active", old=[], new=[0,1,2,3,4,5,6])
 
 #output_file("kernel-density-plot-toggleable.html")
