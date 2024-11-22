@@ -1,20 +1,28 @@
-from random import random
+# Run command `python -m bokeh serve --show .\bokeh-kdensity-server.py` in order to run the server.
+# If that doesn't work, try `bokeh serve --show .\bokeh-kdensity-server.py`.
 
-from bokeh.layouts import column
-from bokeh.models import Button
-from bokeh.palettes import RdYlBu3
-from bokeh.plotting import figure, curdoc
-
-# Import data
+import time
+from datetime import datetime, timedelta
+import numpy as np
 import pandas as pd
-from bokeh.io import output_notebook
+from bokeh.layouts import column
+from bokeh.models import (
+    CheckboxGroup,
+    ColumnDataSource,
+    CustomJS,
+    Legend,
+    LegendItem,
+    Button
+)
+from bokeh.palettes import Colorblind  # For Colorblind palette
+from bokeh.plotting import curdoc, figure
+from scipy.stats import gaussian_kde
+
 df_business = pd.read_csv("../data/cleaned_businessV2.csv")
-#output_notebook()
 
 #--------------------------------------------------------------
 
 # Helper functions
-from datetime import datetime, timedelta
 
 def get_opening_float(time_interval):
     opening_time = time_interval.split("-")
@@ -46,7 +54,7 @@ def get_open_duration_float(time_interval):
     hours = time_difference.total_seconds() / 3600
     return abs(hours)
 
-#--------------------------------------------------------------
+#---------------------------- Aggregate and Clean Data ----------------------------------
 
 # Define kinds of restaurants we are interested in. May need to delete this later
 # to allow the user to define this with UI
@@ -77,9 +85,47 @@ for day in weekdays:
     df_business[day + "_Open_Duration_Float"] = df_business["hours_" + day].apply(get_open_duration_float)
 
 
+#-------------------------------Kernel Density Plot Using Bokeh-------------------------------
 
-#--------------------------------------------------------------
+# --- Variables --- 
 
+# Define a dictionary to store and access contour plots
+contours_dict = {}
+
+# Define unique colors for the rating group
+cb = Colorblind[8]
+color_dict = {"Rating 1-2" : cb[0], 
+              "Rating 2-3" : cb[1],
+              "Rating 3-4" : cb[3],
+              "Rating 4-5" : cb[6],}
+
+default_selected_rating_groups = ["Rating 1-2", "Rating 4-5"]
+
+# Set up data sources
+source = ColumnDataSource(df_business)
+source_weekdays = ColumnDataSource(data={'days': weekdays})
+source_rating_groups = ColumnDataSource(data={'Rating_Groups': default_selected_rating_groups})
+
+# Variable to track the last button press time. We want a little delay from we press a checkbox until
+# we see something happen. Otherwise we will compute contours for every little change to the checkboxes
+# which is not necessarily desired and is also computationally demanding and time consuming. 
+# Implementing this delay will decrease overhead by waiting until the user is done pressing buttons and
+# THEN recompute the kernel density plot. 
+last_press_time = time.time()
+
+# Display checkboxes for rating group and weekdays. Upon load, the lowest and highest
+# rating group are checked as well as all weekdays.
+checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0,3])
+checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(0, len(weekdays))))
+btn_refresh = Button(label="Refresh", button_type="success")
+
+# Create the kernel density plot figure
+fig = figure(height=400, x_axis_label="Hour of Opening", y_axis_label="Duration",
+            x_range = (0,25), y_range = (0,25),
+            background_fill_color="white",
+            title="Opening Hours vs Opening Duration Density")
+
+# --- Functions --- 
 
 # Helper function to concatenate all the "<day>_Hour_Of_Opening_Float" columns into 
 # one column called "Concatenated_Hour_Of_Opening_Float" 
@@ -112,6 +158,7 @@ def get_concatenated_x_and_y_from_days(df_source, days):
     return pd.DataFrame({'Concatenated_Hour_Of_Opening_Float': series_acc_x,
                          'Concatenated_Open_Duration_Float': series_acc_y})
 
+# Test to see that above function works as intended. Not implemented in our vis.
 def test_get_concatenated_x_and_y_from_days():
     test_data = df_business.head(3)
     print(test_data["Saturday_Hour_Of_Opening_Float"])
@@ -126,60 +173,6 @@ def test_get_concatenated_x_and_y_from_days():
     print("Test result:")
     test = get_concatenated_x_and_y_from_days(test_data, test_days)
     print(test)
-
-#-------------------------------Kernel Density Plot Using Bokeh-------------------------------
-
-from bokeh.io import output_notebook
-
-import numpy as np
-from scipy.stats import gaussian_kde
-from bokeh.models import ColumnDataSource, CustomJS, Button, Select, Legend, LegendItem
-from bokeh.palettes import Blues9
-from bokeh.plotting import figure, show
-from bokeh.sampledata.autompg import autompg as df
-from bokeh.models import CheckboxGroup, CustomJS
-from bokeh.models.filters import CustomJSFilter
-from bokeh.models import CDSView
-from bokeh.layouts import row
-from bokeh.plotting import figure, save, output_file, curdoc
-from bokeh.palettes import Colorblind  # For Colorblind palette
-import time
-
-# --- Variables --- 
-
-# Define a dictionary to store and access contour plots
-contours_dict = {}
-
-# Define colors
-cb = Colorblind[8]
-chosen_cb_colors = [cb[0], cb[1], cb[3], cb[6]]
-
-default_selected_rating_groups = ["Rating 1-2", "Rating 4-5"]
-
-# Set up data sources
-source = ColumnDataSource(df_business)
-source_weekdays = ColumnDataSource(data={'days': weekdays})
-source_rating_groups = ColumnDataSource(data={'Rating_Groups': default_selected_rating_groups})
-
-# Variable to track the last button press time. We want a little delay from we press a checkbox until
-# we see something happen. Otherwise we will compute contours for every little change to the checkboxes
-# which is not necessarily desired and is also computationally demanding and time consuming. 
-# Implementing this delay will decrease overhead by waiting until the user is done pressing buttons and
-# THEN recompute the kernel density plot. 
-last_press_time = time.time()
-
-# Display checkboxes for rating group and weekdays. Upon load, the lowest and highest
-# rating group are checked as well as all weekdays.
-checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0,3])
-checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(0, len(weekdays))))
-
-# Create the kernel density plot figure
-fig = figure(height=400, x_axis_label="Hour of Opening", y_axis_label="Duration",
-            x_range = (0,25), y_range = (0,25),
-            background_fill_color="white",
-            title="Opening Hours vs Opening Duration Density")
-
-# --- Functions --- 
 
 # Complicated function to calculate the x, y, and z-values for the kernel density plot
 # Borrowed from https://docs.bokeh.org/en/3.0.0/docs/examples/topics/stats/kde2d.html
@@ -196,12 +189,12 @@ def kde(x, y, N):
     return X, Y, Z
 
 # Create a bokeh contour glyph with the given arguments
-def kde_plot(fig, x, y, color_palette):
+def kde_plot(fig, x, y, color):
     x, y, z = kde(x, y, 100)
     levels = np.linspace(np.min(z), np.max(z), 6)
     contour = fig.contour(x, y, z, levels[1:], 
               #fill_color=color_palette, # Maybe we will use this in the future? Leaving it for now
-              line_color=color_palette)
+              line_color=color)
     return contour
 
 # Remove contours. Before computing new contours, we must remove the old ones to not
@@ -231,7 +224,7 @@ def compute_kernel_density_plots(attr, old, new):
         contour = kde_plot(fig=fig, 
                         x = df_concatenated_hours_and_durations["Concatenated_Hour_Of_Opening_Float"], 
                         y = df_concatenated_hours_and_durations["Concatenated_Open_Duration_Float"], 
-                        color_palette=chosen_cb_colors[i])
+                        color=color_dict[rating_group])
         contour.name = "Contour_"+ rating_group # Not needed, but can be used for debugging
         contours_dict.setdefault(rating_group, []).append(contour)
     print("Finished computing contours")
@@ -245,7 +238,7 @@ def check_timeout():
         # Arguments are required in order to compile, but we don't use them
         compute_kernel_density_plots(attr="active", old=[], new=[])
 
-# Button callback to update the last press time
+# Update the last press time
 def delayer(attr, old, new):
     global last_press_time
     last_press_time = time.time()
@@ -257,7 +250,8 @@ def delayer(attr, old, new):
 # When a weekday checkbox is checked/unchecked update the source_weekdays 
 # data (JS callback) to reflect the checked boxes. When contours are 
 # recomputed it will then recompute for the weekdays written in source_weekdays
-checkboxes_weekdays.js_on_change('active', CustomJS(args=dict(source_weekdays=source_weekdays, weekdays=weekdays, fig=fig), code="""
+
+update_weekdays_callback = CustomJS(args=dict(source_weekdays=source_weekdays, weekdays=weekdays, fig=fig), code="""
     let active = cb_obj.active;  // Get the indices of checked boxes
                                                     
     // Filter the weekdays based on the active indices
@@ -266,10 +260,11 @@ checkboxes_weekdays.js_on_change('active', CustomJS(args=dict(source_weekdays=so
     // Update the source_weekdays data to reflect the checked boxes
     source_weekdays.data = { days: filtered_days };
     source_weekdays.change.emit();  // Notify Bokeh that the data has changed                                          
-"""))
+""")
+
 
 # Same as above but for rating groups 
-checkboxes_rating_groups.js_on_change('active', CustomJS(args=dict(source_rating_groups=source_rating_groups, rating_groups=rating_groups, fig=fig), code="""
+update_rating_groups_callback = CustomJS(args=dict(source_rating_groups=source_rating_groups, rating_groups=rating_groups, fig=fig), code="""
     let active = cb_obj.active;  // Get the indices of checked boxes
                                                     
     // Filter the rating groups based on the active indices
@@ -278,12 +273,24 @@ checkboxes_rating_groups.js_on_change('active', CustomJS(args=dict(source_rating
     // Update the rating_groups data to reflect the checked boxes                         
     source_rating_groups.data = { Rating_Groups: filtered_rating_groups };        
     source_rating_groups.change.emit();  // Notify Bokeh that the data has changed                                                                                              
-"""))
+""")
+
+checkboxes_rating_groups.js_on_change('active', update_rating_groups_callback)
+checkboxes_weekdays.js_on_change('active', update_weekdays_callback)
 
 # Any change to any checkbox - whether rating group or weekday-related will
 # call the delayer (Python callback), which after a delay will call compute_kernel_density_plots
 checkboxes_weekdays.on_change("active", delayer)
 checkboxes_rating_groups.on_change("active", delayer)
+
+# Set up refresh button.
+def refresh_btn_compute_kernel_density_plots():
+    print("refresh btn clicked")
+    compute_kernel_density_plots(attr="active", old=[], new=[])
+
+# Python will complain if I pass in compute_kernel_density_plots because it expects 
+# the attr="active", old=[], new=[] arguments. This is a quick workaround
+btn_refresh.on_click(refresh_btn_compute_kernel_density_plots)
 
 # --- Grid --- 
 
@@ -296,8 +303,8 @@ fig.grid.grid_line_alpha = 0.05
 # Hack to create static legends that are not hooked up to any renderers:
 # Add dummy glyphs to represent legend items (not visible)
 dummy_glyphs = []
-for color in chosen_cb_colors:
-    dummy_glyphs.append(fig.scatter(1, 1, size=10, color=color, visible=False))
+for rating_group in rating_groups:
+    dummy_glyphs.append(fig.scatter(1, 1, size=10, color=color_dict[rating_group], visible=False))
 
 # Create a Legend manually with static items
 legend_items = [
@@ -307,17 +314,12 @@ legend_items = [
 legend = Legend(items=legend_items)
 
 # Add the legend to the figure
-fig.add_layout(legend, "right")  # Position it on the right
+fig.add_layout(legend)  # Position it on the right
 
-# Add the legend as a layout item to the right of the plot.
-#p.add_layout(p.legend, 'right')
-
-# --- Final Things --- 
+# --- Get the party started --- 
 
 # Compute the first kernel density plot.
 compute_kernel_density_plots(attr="active", old=[], new=[])
 
-#--------------------------------------------------------------
-
 # Put the plot and buttons in a layout and add to the document
-curdoc().add_root(column(checkboxes_rating_groups, checkboxes_weekdays, fig))
+curdoc().add_root(column(checkboxes_rating_groups, checkboxes_weekdays, btn_refresh, fig))
