@@ -3,10 +3,9 @@ from bokeh.models import ColumnDataSource
 from pyproj import Transformer, CRS
 import xyzservices.providers as xyz
 
-
 def create_hexbin_plot(df):
     # Load data and extract relevant columns
-    #df = df[["name", "latitude", "longitude"]].copy()
+    df = df[["name", "latitude", "longitude"]].copy()
 
     # Calculate web mercator coordinates
     in_proj = CRS.from_epsg(4326)  # WGS84
@@ -28,9 +27,7 @@ def create_hexbin_plot(df):
         y_axis_type="mercator",
         x_range=(min_x, max_x),
         y_range=(min_y, max_y),
-        width=500,
-        height=500,
-        tools="wheel_zoom,pan,reset,box_select,lasso_select",
+        width=800,
     )
     p.add_tile(xyz.CartoDB.Positron, retina=True)
     p.grid.visible = False
