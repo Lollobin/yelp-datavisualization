@@ -1,12 +1,13 @@
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, Circle, ImageURL
 from pyproj import Transformer, CRS
 import xyzservices.providers as xyz
+from bokeh.core.properties import value
 
 
 def create_hexbin_plot(df):
     # Load data and extract relevant columns
-    #df = df[["name", "latitude", "longitude"]].copy()
+    # df = df[["name", "latitude", "longitude"]].copy()
 
     # Calculate web mercator coordinates
     in_proj = CRS.from_epsg(4326)  # WGS84
@@ -39,15 +40,21 @@ def create_hexbin_plot(df):
     p.hexbin(
         df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False
     )
-
-    p.circle(
+    
+    circle_renderer = p.circle(
         x="x",
         y="y",
         source=source,
-        radius=20,
-        color="blue",
-        alpha=0.1,
-        selection_color="firebrick",
+        radius=75,
+        fill_color="blue",
+        line_color=None,
+        fill_alpha=0.1,
     )
+
+    selected_circle = Circle(
+        fill_color="firebrick", line_color=None, fill_alpha=0.8, radius=300
+    )
+
+    circle_renderer.selection_glyph = selected_circle
 
     return p, source
