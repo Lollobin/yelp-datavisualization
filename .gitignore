@@ -1,6 +1,9 @@
 src/main.html
 .vscode/
 
+preprocessing/*
+!*.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

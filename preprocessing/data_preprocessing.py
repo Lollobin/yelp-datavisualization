@@ -187,25 +187,26 @@ class DataCleaning:
         print(f"Report written to {report_path}")
 
 # Example usage:
-cleaner = DataCleaning('cleaned_business.json', file_type='json')
-cleaner.normalize_dictionary_columns()  # Normalize dictionary columns like 'attributes' and 'hours'
-cleaner.save_as_csv('cleaned_business.csv')  # Save the initial JSON as CSV
-# cleaner.normalize_dictionary_columns()  # Normalize dictionary columns like 'attributes' and 'hours'
-# cleaner.visualize_missingness()  # Visualize missingness of the full dataset
-# cleaner.data_quality_tests()  # Perform data quality checks on the full dataset
-# cleaner.handle_missing_values(strategy='mean')  # Handle missing values for full dataset
-# cleaner.remove_duplicates()  # Remove duplicates from full dataset
-# cleaner.analyze_data_points()  # Analyze data points in the full dataset
-# cleaner.write_report('crosslisted_reviews_report.txt')  # Write a report summarizing the cleaning steps
-# sampled_data = cleaner.perform_sampling(method='random', sample_fraction=0.1)  # Perform random sampling
+cities = ['Tucson', 'Tampa']
+for i in cities:
+    cleaner = DataCleaning('crosslisted_reviews_' + i + '.json', file_type='json')
+    cleaner.normalize_dictionary_columns()  # Normalize dictionary columns like 'attributes' and 'hours'
+    cleaner.save_as_csv('crosslisted_reviews_' + i + '.csv')  # Save the initial JSON as CSV
+    cleaner.visualize_missingness()  # Visualize missingness of the full dataset
+    cleaner.data_quality_tests()  # Perform data quality checks on the full dataset
+    cleaner.handle_missing_values(strategy='drop')  # Handle missing values for full dataset
+    cleaner.remove_duplicates()  # Remove duplicates from full dataset
+    cleaner.analyze_data_points()  # Analyze data points in the full dataset
+    # cleaner.write_report('cleaned_business_' + i + '.txt')  # Write a report summarizing the cleaning steps
+    # sampled_data = cleaner.perform_sampling(method='random', sample_fraction=0.1)  # Perform random sampling
 
 
-# Perform all tests and processing on the sample
-print("\n=== Data Quality Tests for the Sample ===")
-# cleaner.visualize_missingness(data=sampled_data)  # Visualize missingness of the sample
-# cleaner.data_quality_tests(data=sampled_data)  # Perform data quality checks on the sample
-# cleaner.handle_missing_values(strategy='mean', data=sampled_data)  # Handle missing values for the sample
-# cleaner.remove_duplicates(data=sampled_data)  # Remove duplicates from the sample
-# cleaner.analyze_data_points(data=sampled_data)  # Analyze data points in the sample
-# cleaner.save_cleaned_data('crosslisted_reviews_sample_data.csv', data=sampled_data)  # Save the cleaned sample
-# cleaner.write_report('crosslisted_reviews_sample_report.txt')  # Write a report summarizing the cleaning steps
+    # Perform all tests and processing on the sample
+    print("\n=== Data Quality Tests for the Sample ===")
+    # cleaner.visualize_missingness(data=sampled_data)  # Visualize missingness of the sample
+    # cleaner.data_quality_tests(data=sampled_data)  # Perform data quality checks on the sample
+    # cleaner.handle_missing_values(strategy='mean', data=sampled_data)  # Handle missing values for the sample
+    # cleaner.remove_duplicates(data=sampled_data)  # Remove duplicates from the sample
+    # cleaner.analyze_data_points(data=sampled_data)  # Analyze data points in the sample
+    # cleaner.save_cleaned_data('crosslisted_reviews_sample_data.csv', data=sampled_data)  # Save the cleaned sample
+    # cleaner.write_report('crosslisted_reviews_sample_report.txt')  # Write a report summarizing the cleaning steps

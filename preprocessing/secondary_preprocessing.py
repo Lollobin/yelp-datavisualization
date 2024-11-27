@@ -16,21 +16,22 @@ def fill_missing_zeros(time_str):
 
 
 # Load the CSV file
-csv_file_path = 'cleaned_business.csv'
-df = pd.read_csv(csv_file_path)
+for i in 'Tucson', 'Tampa':
+    csv_file_path = 'cleaned_business_' + i + '.csv'
+    df = pd.read_csv(csv_file_path)
 
-# Drop all columns related to attributes (columns that start with 'attributes_')
-df = df[df.columns.drop(list(df.filter(regex='attributes_')))]
+    # Drop all columns related to attributes (columns that start with 'attributes_')
+    df = df[df.columns.drop(list(df.filter(regex='attributes_')))]
 
-# Filter rows where the 'categories' column contains the word "Restaurant" (case insensitive)
-df_filtered = df[df['categories'].str.contains("restaurant", case=False, na=False)].copy()
+    # Filter rows where the 'categories' column contains the word "Restaurant" (case insensitive)
+    df_filtered = df[df['categories'].str.contains("restaurant", case=False, na=False)].copy()
 
-# Apply the function to fix the time format for columns generated from the 'hours' dictionary
-for day in ['hours_Monday', 'hours_Tuesday', 'hours_Wednesday', 'hours_Thursday', 'hours_Friday', 'hours_Saturday', 'hours_Sunday']:
-    if day in df_filtered.columns:
-        df_filtered[day] = df_filtered[day].apply(fill_missing_zeros)
-# Save the cleaned and filtered data to a new CSV file
-filename = 'cleaned_businessV2.csv'
-df_filtered.to_csv(filename, index=False)
+    # Apply the function to fix the time format for columns generated from the 'hours' dictionary
+    for day in ['hours_Monday', 'hours_Tuesday', 'hours_Wednesday', 'hours_Thursday', 'hours_Friday', 'hours_Saturday', 'hours_Sunday']:
+        if day in df_filtered.columns:
+            df_filtered[day] = df_filtered[day].apply(fill_missing_zeros)
+    # Save the cleaned and filtered data to a new CSV file
+    filename = 'cleaned_businessV2_' + i + '.csv'
+    df_filtered.to_csv(filename, index=False)
 
-print("Data cleaned and saved to " + filename)
+    print("Data cleaned and saved to " + filename)

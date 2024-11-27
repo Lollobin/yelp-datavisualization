@@ -5,6 +5,85 @@ from bokeh.models import Slider
 from scatter import create_scatter_plot, update_plot
 from hex_binning import create_hexbin_plot
 from historical_chart import create_historical_chart
+from bokeh.models import Select
+
+####################################
+# City-Specific File Setup
+####################################
+# Dictionary mapping cities to their business and reviews files
+city_files = {
+    "Philadelphia": {
+        "business": "../data/cleaned_businessV2.csv",
+        "reviews": "../data/crosslisted_reviews.csv",
+    },
+    "Tucson": {
+        "business": "../data/cleaned_business_Tucson.csv",
+        "reviews": "../data/crosslisted_reviews_Tucson.csv",
+    },
+    "Tampa": {
+        "business": "../data/cleaned_business_Tampa.csv",
+        "reviews": "../data/crosslisted_reviews_Tampa.csv",
+    },
+}
+
+
+def load_city_data(city):
+    """Load city-specific business and review data."""
+    paths = city_files[city]
+
+    # Load business data
+    df_business = load_data(paths["business"])
+    df_business = process_categories(df_business, categories_of_interest)
+    df_business = filter_hours(df_business, weekdays)
+
+    # Load reviews data specific to the city
+    df_review = pd.read_csv(paths["reviews"])
+    df_review.rename(columns={"stars": "review_stars"}, inplace=True)
+    df_joined = pd.merge(df_business, df_review, on="business_id", how="inner")
+    df_joined = df_joined.convert_dtypes()
+    df_joined = process_categories(df_joined, categories_of_interest)
+
+    # Process data for historical chart
+    df_joined = df_joined[["review_stars", "date", "category_of_interest"]]
+    df_joined["date"] = pd.to_datetime(df_joined["date"])
+    df_joined = df_joined.sort_values(by="date")
+    df_pivot = df_joined.pivot_table(
+        index="date",
+        columns="category_of_interest",
+        values="review_stars",
+        aggfunc="mean",
+    )
+    df_resampled = df_pivot.resample("D").mean()
+    df_historical_reviews = df_resampled.rolling(
+        365, min_periods=1, win_type="triang"
+    ).mean()
+
+    return df_business, df_historical_reviews
+
+
+def update_city(attr, old, new):
+    """Callback to update plots when a city is selected."""
+    selected_city = city_selector.value
+    df_business, df_grouped = load_city_data(selected_city)
+
+    # Update plots
+    scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
+        df_business, df_grouped, weekdays
+    )
+    widgets = setup_sliders(df_business, scatter_source, weekdays)
+    layout.children[1] = gridplot(
+        [[widgets, scatter_plot, hexbin_plot], [None, historical_plot]]
+    )
+
+
+# Create city selector widget
+city_selector = Select(
+    title="Select City",
+    value=list(city_files.keys())[0],
+    options=list(city_files.keys()),
+)
+city_selector.on_change("value", update_city)
+
 
 ####################################
 # Configuration
@@ -125,38 +204,33 @@ def setup_sliders(df, scatter_source, weekdays):
 # Main Script Execution
 ####################################
 def main():
-    # Load and process data
-    df_business = load_data("../data/cleaned_businessV2.csv")
-    df_business = process_categories(df_business, categories_of_interest)
-    df_business = filter_hours(df_business, weekdays)
-
-    df_review = pd.read_csv("../data/crosslisted_reviews.csv")
-    df_review.rename(columns={"stars": "review_stars"}, inplace=True)
-    df_joined = pd.merge(df_business, df_review, on="business_id", how="inner")
-    df_joined = df_joined.convert_dtypes()
-    df_joined = process_categories(df_joined, categories_of_interest)
-
-    # Process data for historical chart
-    df_joined = df_joined[["review_stars", "date", "category_of_interest"]]
-    df_joined["date"] = pd.to_datetime(df_joined["date"])
-    df_joined = df_joined.sort_values(by="date")
-    df_pivot = df_joined.pivot_table(
-        index="date",
-        columns="category_of_interest",
-        values="review_stars",
-        aggfunc="mean",
-    )
-    df_resampled = df_pivot.resample("D").mean()
-    df_rolling = df_resampled.rolling(365, min_periods=1, win_type="triang").mean()
+    # Initial setup: load data for the default selected city
+    selected_city = city_selector.value
+    df_business, df_historical_reviews = load_city_data(selected_city)
 
     # Set up plots and widgets
     scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
-        df_business, df_rolling, weekdays
+        df_business, df_historical_reviews, weekdays
     )
     widgets = setup_sliders(df_business, scatter_source, weekdays)
 
-    # Layout and add to document
-    layout = gridplot([[widgets, scatter_plot, hexbin_plot], [None, historical_plot]])
+    # Create the layout with the city selector and plots
+    global layout
+    layout = column(
+        city_selector,  # Add the city selector at the top
+        gridplot(
+            [
+                [
+                    widgets,
+                    scatter_plot,
+                    hexbin_plot,
+                ],  # Widgets and plots in the first row
+                [None, historical_plot],  # Historical chart in the second row
+            ]
+        ),
+    )
+
+    # Add the layout to the current Bokeh document
     curdoc().add_root(layout)
 
 
