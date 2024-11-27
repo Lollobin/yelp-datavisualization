@@ -4,11 +4,14 @@ from bokeh.palettes import Colorblind
 
 def create_historical_chart(df, categories_of_interest):
 
+    df = df[df.index.year > 2008]
+
     # create a new plot with a title and axis labels
     p = figure(
         title="Average Rating Throughout the Years by Category",
         x_axis_label="Year",
         y_axis_label="Average Rating",
+        x_axis_type="datetime",
     )
 
     # Get a list of color-blind friendly colors of length = len(categories_of_interest)
@@ -16,9 +19,14 @@ def create_historical_chart(df, categories_of_interest):
 
     # Make a line for each category
     for i, category in enumerate(categories_of_interest):
-        x = df[category].index.tolist()
-        y = df[category].tolist()
-        p.line(x, y, legend_label=category, line_width=2, color=colors[i])
+        if category in df.columns:
+            p.line(
+                df.index,
+                df[category],
+                legend_label=category,
+                color=colors[i],
+                line_width=2,
+            )
 
     # Move legend outside the plot
     p.add_layout(p.legend[0], "right")

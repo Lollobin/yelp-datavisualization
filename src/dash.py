@@ -26,6 +26,7 @@ city_files = {
     },
 }
 
+
 def load_city_data(city):
     """Load city-specific business and review data."""
     paths = city_files[city]
@@ -41,25 +42,39 @@ def load_city_data(city):
     df_joined = pd.merge(df_business, df_review, on="business_id", how="inner")
     df_joined = df_joined.convert_dtypes()
     df_joined = process_categories(df_joined, categories_of_interest)
-    df_joined["Year"] = df_joined["date"].apply(lambda x: x.split("-")[0])
-    df_grouped = df_joined.groupby(["category_of_interest", "Year"])[
-        "review_stars"
-    ].mean()
 
-    return df_business, df_grouped
+    # Process data for historical chart
+    df_joined = df_joined[["review_stars", "date", "category_of_interest"]]
+    df_joined["date"] = pd.to_datetime(df_joined["date"])
+    df_joined = df_joined.sort_values(by="date")
+    df_pivot = df_joined.pivot_table(
+        index="date",
+        columns="category_of_interest",
+        values="review_stars",
+        aggfunc="mean",
+    )
+    df_resampled = df_pivot.resample("D").mean()
+    df_historical_reviews = df_resampled.rolling(
+        365, min_periods=1, win_type="triang"
+    ).mean()
+
+    return df_business, df_historical_reviews
+
 
 def update_city(attr, old, new):
     """Callback to update plots when a city is selected."""
     selected_city = city_selector.value
     df_business, df_grouped = load_city_data(selected_city)
-    
 
     # Update plots
     scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
         df_business, df_grouped, weekdays
     )
     widgets = setup_sliders(df_business, scatter_source, weekdays)
-    layout.children[1] = gridplot([[widgets, scatter_plot, hexbin_plot], [None, historical_plot]])
+    layout.children[1] = gridplot(
+        [[widgets, scatter_plot, hexbin_plot], [None, historical_plot]]
+    )
+
 
 # Create city selector widget
 city_selector = Select(
@@ -123,11 +138,11 @@ def transfer_selected_indices(attr, old, new, source, target):
     target.selected.indices = selected_indices
 
 
-def setup_plots(df_business, df_grouped_reviews, weekdays):
+def setup_plots(df_business, df_rolling_reviews, weekdays):
     scatter_plot, scatter_source = create_scatter_plot(df_business, weekdays)
     hexbin_plot, hexbin_source = create_hexbin_plot(df_business)
     historical_plot = create_historical_chart(
-        df_grouped_reviews, categories_of_interest
+        df_rolling_reviews, categories_of_interest
     )
 
     scatter_source.selected.on_change(
@@ -191,11 +206,11 @@ def setup_sliders(df, scatter_source, weekdays):
 def main():
     # Initial setup: load data for the default selected city
     selected_city = city_selector.value
-    df_business, df_grouped = load_city_data(selected_city)
+    df_business, df_historical_reviews = load_city_data(selected_city)
 
     # Set up plots and widgets
     scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
-        df_business, df_grouped, weekdays
+        df_business, df_historical_reviews, weekdays
     )
     widgets = setup_sliders(df_business, scatter_source, weekdays)
 
@@ -205,7 +220,11 @@ def main():
         city_selector,  # Add the city selector at the top
         gridplot(
             [
-                [widgets, scatter_plot, hexbin_plot],  # Widgets and plots in the first row
+                [
+                    widgets,
+                    scatter_plot,
+                    hexbin_plot,
+                ],  # Widgets and plots in the first row
                 [None, historical_plot],  # Historical chart in the second row
             ]
         ),
