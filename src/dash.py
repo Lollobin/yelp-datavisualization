@@ -16,15 +16,14 @@ city_files = {
         "business": "../data/cleaned_businessV2.csv",
         "reviews": "../data/crosslisted_reviews.csv",
     },
-    "New York": {
-        "business": "../data/cleaned_new_york.csv",
-        "reviews": "../data/crosslisted_reviews_new_york.csv",
+    "Tucson": {
+        "business": "../data/cleaned_business_Tucson.csv",
+        "reviews": "../data/crosslisted_reviews_Tucson.csv",
     },
-    "Los Angeles": {
-        "business": "../data/cleaned_los_angeles.csv",
-        "reviews": "../data/crosslisted_reviews_los_angeles.csv",
+    "Tampa": {
+        "business": "../data/cleaned_business_Tampa.csv",
+        "reviews": "../data/crosslisted_reviews_Tampa.csv",
     },
-    # Add more cities as needed
 }
 
 def load_city_data(city):
@@ -53,11 +52,13 @@ def update_city(attr, old, new):
     """Callback to update plots when a city is selected."""
     selected_city = city_selector.value
     df_business, df_grouped = load_city_data(selected_city)
+    
 
     # Update plots
     scatter_plot, scatter_source, hexbin_plot, historical_plot = setup_plots(
         df_business, df_grouped, weekdays
     )
+    widgets = setup_sliders(df_business, scatter_source, weekdays)
     layout.children[1] = gridplot([[widgets, scatter_plot, hexbin_plot], [None, historical_plot]])
 
 # Create city selector widget

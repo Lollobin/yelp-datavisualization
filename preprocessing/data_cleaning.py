@@ -1,6 +1,6 @@
 import json
 
-def filter_businesses_by_city(city_name):
+def filter_businesses_by_city(city_name, outputname):
     # Open the dataset and process line by line
     data = []
     with open('yelp_academic_dataset_business.json', encoding='utf-8') as f:
@@ -11,7 +11,7 @@ def filter_businesses_by_city(city_name):
                 data.append(business)
 
     # Save the filtered data into a new file
-    with open('cleaned_business.json', 'w', encoding='utf-8') as outfile:
+    with open(outputname, 'w', encoding='utf-8') as outfile:
         json.dump(data, outfile, ensure_ascii=False, indent=4)
 
     # Print the number of businesses in Philadelphia
@@ -77,10 +77,14 @@ def crosslist_reviews(business_file, review_file, output_file):
     print(f"Number of crosslisted reviews: {len(crosslisted_reviews)}")
     
 # For one city Philadelphia
-filter_businesses_by_city('Philadelphia')
+# filter_businesses_by_city('Philadelphia', 'cleaned_business_Philadelphia.json')
+# filter_reviews('yelp_academic_dataset_review.json', 'cleaned_reviews_Philadelphia.json')
+# crosslist_reviews('cleaned_business_Philadelphia.json', 'yelp_academic_dataset_review.json', 'crosslisted_reviews_Philadelphia.json')
 
-# Example usage for reviews:
-filter_reviews('yelp_academic_dataset_review.json', 'cleaned_reviews.json')
+filter_businesses_by_city('Tucson', 'cleaned_business_Tucson.json')
+filter_reviews('yelp_academic_dataset_review.json', 'cleaned_reviews_Tucson.json')
+crosslist_reviews('cleaned_business_Tucson.json', 'yelp_academic_dataset_review.json', 'crosslisted_reviews_Tucson.json')
 
-# Example usage for crosslisting:
-crosslist_reviews('cleaned_business.json', 'yelp_academic_dataset_review.json', 'crosslisted_reviews.json')
+filter_businesses_by_city('Tampa', 'cleaned_business_Tampa.json')
+filter_reviews('yelp_academic_dataset_review.json', 'cleaned_reviews_Tampa.json')
+crosslist_reviews('cleaned_business_Tampa.json', 'yelp_academic_dataset_review.json', 'crosslisted_reviews_Tampa.json')
