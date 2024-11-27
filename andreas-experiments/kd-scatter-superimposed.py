@@ -67,7 +67,7 @@ def get_open_duration_float(time_interval):
 
 # Define kinds of restaurants we are interested in. May need to delete this later
 # to allow the user to define this with UI
-categories_of_interest = ['Chinese', 'Japanese', 'Italian', 'Polish', 'Scandinavian']
+categories_of_interest = ["Burger", "Chinese", "Mexican", "Italian", "Thai"]
 
 # Convert column types to string
 df_business = df_business.convert_dtypes()
