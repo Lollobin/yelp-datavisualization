@@ -43,27 +43,29 @@ def create_scatter_plot(df_business, weekdays):
         x_axis_label="Opening Duration",
         y_axis_label="Number of Hours Restaurant Remains Open",
         width=800,
-       
+        toolbar_location = None,
     )
 
     colors = Colorblind[len(weekdays)]
+    renderers = []
     for i, day in enumerate(weekdays):
-        #filtered_df = df_business[df_business[day + "_Open_Duration_Float"].notna()]
-        plot.scatter(
+        renderer = plot.scatter(
             x=day + "_Hour_Of_Opening_Float",
             y=day + "_Open_Duration_Float",
             source=source,
             color=colors[i],
             size=7,
             alpha=0.3,
-            selection_color="red",          
+            selection_color="red",
         )
+        renderers.append(renderer)
 
     # plot.legend.click_policy = "hide"
     # plot.add_layout(plot.legend[0], "right")
     plot.x_range = Range1d(0, 24)
     plot.y_range = Range1d(0, 24)
-    return plot, source
+
+    return plot, source, renderers
 
 
 
