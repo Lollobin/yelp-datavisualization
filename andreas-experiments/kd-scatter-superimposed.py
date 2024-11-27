@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 # Variation Filter Out Groups, Hide/Show Days
-from bokeh.layouts import column, row
+from bokeh.layouts import column
 from bokeh.models import (
     Button,
     CDSView,
@@ -17,6 +17,7 @@ from bokeh.models import (
     CustomJS,
     Legend,
     LegendItem,
+    Switch
 )
 from bokeh.models.filters import CustomJSFilter
 from bokeh.palettes import (
@@ -102,24 +103,25 @@ source = ColumnDataSource(df_business)
 # Specifically used to hide/show the individual scatterplots
 scatters_dict = {}
 
-# Define colors
-#colors = Colorblind[len(rating_groups)]
+# Global variable for alpha for scatter markers in case we wish to change it later
+default_scatter_alpha = 0.1
 
 # Define unique colors for the rating group
 cb = Colorblind[8]
 color_dict = {"Rating 1-2" : cb[0], 
               "Rating 2-3" : cb[1],
               "Rating 3-4" : cb[3],
-              "Rating 4-5" : cb[6],}
+              "Rating 4-5" : cb[6]}
+
+# Used for coloring legend items. It expects a list.
 color_list = list(color_dict.values())
-print("color_list, type(color_list)", color_list, type(color_list))
 
 # Display checkboxes for rating group and weekdays. Let all be checked upon load
 checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0,3])
 checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(0, len(weekdays))))
 
 # Create the scatter plot figure with fixed axis ranges
-fig_scatter = figure(height=600, title="Opening Hours and Durations of Restaurants",
+fig_scatter_kd = figure(height=600, title="Opening Hours and Durations of Restaurants",
     x_axis_label="Opening Hour",
     y_axis_label="Duration",
     x_range=(0, 25),
@@ -160,36 +162,17 @@ checkboxes_weekdays.js_on_change('active', CustomJS(args=dict(scatters_dict = sc
 # Create scatterplots
 for i, rating_group in enumerate(rating_groups):
     for j, weekday in enumerate(weekdays):
-        scatter = fig_scatter.scatter(x=weekday + "_Hour_Of_Opening_Float", 
+        scatter = fig_scatter_kd.scatter(x=weekday + "_Hour_Of_Opening_Float", 
                     y=weekday + "_Open_Duration_Float", 
                     source=source, 
                     size=4, 
                     color=factor_cmap("Rating_Group", color_list, rating_groups), 
-                    alpha=0.1, 
-                    view=view,
-                    #legend_field="Rating_Group"
+                    alpha=default_scatter_alpha, 
+                    view=view
                     )
         # Initialise the key if it isn't already there. 
         # Append if the key is already there
         scatters_dict.setdefault(weekday, []).append(scatter)
-
-# --- Legend --- 
-
-# Hack to create static legends that are not hooked up to any renderers:
-# Add dummy glyphs to represent legend items (not visible)
-dummy_glyphs = []
-for rating_group in rating_groups:
-    dummy_glyphs.append(fig_scatter.scatter(1, 1, size=10, color=color_dict[rating_group], visible=False))
-
-# Create a Legend manually with static items
-legend_items = [
-    LegendItem(label=rating_groups[i], renderers=[dummy_glyphs[i]])
-    for i in range(len(rating_groups))
-]
-legend = Legend(items=legend_items)
-
-# Add the legend to the figure
-fig_scatter.add_layout(legend)  
 
 #-------------------------------Kernel Density Plot-------------------------------
 
@@ -197,6 +180,9 @@ fig_scatter.add_layout(legend)
 
 # Define a dictionary to store and access contour plots
 contours_dict = {}
+
+# Define whether to show contours or not
+contours_show = False
 
 # Define unique colors for the rating group
 cb = Colorblind[8]
@@ -219,12 +205,33 @@ source_rating_groups = ColumnDataSource(data={'Rating_Groups': default_selected_
 # THEN recompute the kernel density plot. 
 last_press_time = time.time()
 
-# Display checkboxes for rating group and weekdays. Upon load, the lowest and highest
-# rating group are checked as well as all weekdays.
-#checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0,3])
-#checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(0, len(weekdays))))
+def set_scatters_alpha(alpha):
+    global scatters_dict
 
-btn_refresh = Button(label="Refresh", button_type="success")
+    # Check if dict is empty
+    if not scatters_dict:
+        return
+    for scatter_list in scatters_dict.values():
+        for scatter in scatter_list:
+            #print("scatter", scatter)
+            #print("type(scatter)", type(scatter))
+            scatter.glyph.line_alpha = alpha
+            scatter.glyph.fill_alpha = alpha
+
+
+def toggle_kd_handler(attr, old, new):
+    global contours_show
+    global fig_scatter_kd
+    contours_show = new
+
+    if new:
+        compute_kernel_density_plots(attr="active", old=[], new=[])
+        set_scatters_alpha(0.01)
+    else:
+        remove_contours(fig_scatter_kd)
+        set_scatters_alpha(default_scatter_alpha)
+
+
 
 # Create the kernel density plot figure
 # fig_kd = figure(height=600, x_axis_label="Hour of Opening", y_axis_label="Duration",
@@ -238,7 +245,7 @@ btn_refresh = Button(label="Refresh", button_type="success")
 # one column called "Concatenated_Hour_Of_Opening_Float" 
 # and do the same for "<day>_Open_Duration_Float". Return a df with columns 
 # "Concatenated_Hour_Of_Opening_Float", "Concatenated_Open_Duration_Float".
-
+#
 # The idea is that we only want to create a kernel density plot on the background
 # of the points that we are seeing on the scatterplot. In other words: we do not wish
 # to calculate a kernel density plot based on data points we have filtered away or
@@ -315,14 +322,31 @@ def remove_contours(fig):
                 fig.renderers.remove(c)
     contours_dict = {}
 
-def compute_kernel_density_plots(attr, old, new, fig=fig_scatter):
-    print("Computing contours...")
+def compute_kernel_density_plots(attr, old, new, fig=fig_scatter_kd):
+
+    global contours_show
+
+    # Don't calculate
+    if not contours_show:
+        print("contours_show is false. Aborting contour computation", contours_show)
+        return
+
     # Remove current contours before drawing new
     if contours_dict != {}:
         remove_contours(fig)
 
     days_to_include = source_weekdays.data['days']
     rating_groups_to_include = source_rating_groups.data['Rating_Groups']
+
+    if days_to_include == []:
+        print("days_to_include empty. Aborting contour computation")
+        return
+
+    if rating_groups_to_include == []:
+        print("rating_groups_to_include empty. Aborting contour computation")
+        return
+
+    print("Computing contours...")
     print("rating_groups_to_include", rating_groups_to_include)
     for i, rating_group in enumerate(rating_groups_to_include):
         df_filtered = df_business[df_business['Rating_Group'] == rating_group]
@@ -358,7 +382,7 @@ def delayer(attr, old, new):
 # data (JS callback) to reflect the checked boxes. When contours are 
 # recomputed it will then recompute for the weekdays written in source_weekdays
 
-update_weekdays_callback = CustomJS(args=dict(source_weekdays=source_weekdays, weekdays=weekdays, fig=fig_scatter), code="""
+update_weekdays_callback = CustomJS(args=dict(source_weekdays=source_weekdays, weekdays=weekdays, fig=fig_scatter_kd), code="""
     let active = cb_obj.active;  // Get the indices of checked boxes
                                                     
     // Filter the weekdays based on the active indices
@@ -371,7 +395,7 @@ update_weekdays_callback = CustomJS(args=dict(source_weekdays=source_weekdays, w
 
 
 # Same as above but for rating groups 
-update_rating_groups_callback = CustomJS(args=dict(source_rating_groups=source_rating_groups, rating_groups=rating_groups, fig=fig_scatter), code="""
+update_rating_groups_callback = CustomJS(args=dict(source_rating_groups=source_rating_groups, rating_groups=rating_groups, fig=fig_scatter_kd), code="""
     let active = cb_obj.active;  // Get the indices of checked boxes
                                                     
     // Filter the rating groups based on the active indices
@@ -390,6 +414,9 @@ checkboxes_weekdays.js_on_change('active', update_weekdays_callback)
 checkboxes_weekdays.on_change("active", delayer)
 checkboxes_rating_groups.on_change("active", delayer)
 
+# Refresh button
+btn_refresh = Button(label="Refresh", button_type="success")
+
 # Set up refresh button.
 def refresh_btn_compute_kernel_density_plots():
     print("refresh btn clicked")
@@ -399,11 +426,9 @@ def refresh_btn_compute_kernel_density_plots():
 # the attr="active", old=[], new=[] arguments. This is a quick workaround
 btn_refresh.on_click(refresh_btn_compute_kernel_density_plots)
 
-# --- Grid --- 
-
-# fig_kd.grid.level = "overlay"
-# fig_kd.grid.grid_line_color = "black"
-# fig_kd.grid.grid_line_alpha = 0.05
+# Contour toggle button
+btn_toggle_kd = Switch(active=False)
+btn_toggle_kd.on_change("active", toggle_kd_handler)
 
 # --- Legend --- 
 
@@ -411,7 +436,7 @@ btn_refresh.on_click(refresh_btn_compute_kernel_density_plots)
 # Add dummy glyphs to represent legend items (not visible)
 dummy_glyphs = []
 for rating_group in rating_groups:
-    dummy_glyphs.append(fig_scatter.scatter(1, 1, size=10, color=color_dict[rating_group], visible=False))
+    dummy_glyphs.append(fig_scatter_kd.scatter(1, 1, size=10, color=color_dict[rating_group], visible=False))
 
 # Create a Legend manually with static items
 legend_items = [
@@ -421,7 +446,7 @@ legend_items = [
 legend = Legend(items=legend_items)
 
 # Add the legend to the figure
-#fig_kd.add_layout(legend)  # Position it on the right
+fig_scatter_kd.add_layout(legend)  
 
 # --- Get the party started --- 
 
@@ -429,4 +454,4 @@ legend = Legend(items=legend_items)
 compute_kernel_density_plots(attr="active", old=[], new=[])
 
 # Put the plot and buttons in a layout and add to the document
-curdoc().add_root(column(checkboxes_rating_groups, checkboxes_weekdays, btn_refresh, fig_scatter))
+curdoc().add_root(column(checkboxes_rating_groups, checkboxes_weekdays, btn_refresh, btn_toggle_kd, fig_scatter_kd))
