@@ -130,22 +130,6 @@ def main():
         ]
         filtered_df = filtered_df[filtered_df["stars"] >= min_rating]
 
-        #filtered_df = filtered_df.copy()
-
-        # Recompute the columns required for plotting
-        """ for day in weekdays:
-            filtered_df[day + "_Hour_Of_Opening_Float"] = filtered_df["hours_" + day].apply(
-            get_opening_float
-        )
-            filtered_df[day + "_Open_Duration_Float"] = filtered_df["hours_" + day].apply(
-            get_open_duration_float
-        ) """
-
-        # Filter by selected days
-        """ for day in weekdays:
-            if day not in selected_days:
-                filtered_df = filtered_df[filtered_df["hours_" + day] == "Closed"] """
-
         for i, day in enumerate(weekdays):
             if day in selected_days:
                 scatter_renderers[i].visible = True
