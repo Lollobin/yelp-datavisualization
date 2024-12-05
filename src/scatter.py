@@ -10,6 +10,7 @@ from bokeh.layouts import column
 from bokeh.models import (
     Button,
     CDSView,
+    Circle,
     CheckboxGroup,
     ColumnDataSource,
     Legend,
@@ -17,10 +18,12 @@ from bokeh.models import (
     Switch,
     BooleanFilter
 )
+
 from bokeh.palettes import Colorblind  # For Colorblind palette
 from bokeh.plotting import figure
 from bokeh.transform import factor_cmap  # For factor-based color mapping
 from scipy.stats import gaussian_kde
+
 
 
 # Helper functions for data processing
@@ -57,8 +60,8 @@ def get_open_duration_float(time_interval):
 
 # Function to load and preprocess the data
 
-def load_and_preprocess_data():
-    df_business = pd.read_csv("../data/cleaned_businessV2.csv")
+def load_and_preprocess_data(df):
+    df_business = df
 
     # Define kinds of restaurants we are interested in
     categories_of_interest = ["Burger", "Chinese", "Mexican", "Italian", "Thai", "Other"]
@@ -89,11 +92,16 @@ def load_and_preprocess_data():
 
 # Function to create the scatter plot and associated widgets
 
-def create_scatter_components(df_business):
+def create_scatter_components(df_business, source=None):
     # Set up data sources
-    source = ColumnDataSource(df_business)
+    if source is None:
+        source = ColumnDataSource(df_business)
+    else:
+        # Update the shared source with df_business data
+        source.data = df_business
+
     scatters_dict = {}
-    default_scatter_alpha = 0.1
+    default_scatter_alpha = 0.7  # Increased alpha for better visibility
 
     # Define unique colors for the rating groups
     cb = Colorblind[8]
@@ -112,12 +120,16 @@ def create_scatter_components(df_business):
     checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0, 3])
     checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(len(weekdays))))
 
-    # Create the scatter plot figure
-    fig_scatter_kd = figure(height=600, title="Opening Hours and Durations of Restaurants",
-                            x_axis_label="Opening Hour",
-                            y_axis_label="Duration",
-                            x_range=(0, 25),
-                            y_range=(0, 25))
+    # Create the scatter plot figure with selection tools
+    fig_scatter_kd = figure(
+        height=600,
+        title="Opening Hours and Durations of Restaurants",
+        x_axis_label="Opening Hour",
+        y_axis_label="Duration",
+        x_range=(0, 25),
+        y_range=(0, 25),
+        tools="wheel_zoom,pan,reset,box_select,lasso_select"
+    )
 
     # Create a BooleanFilter for rating groups
     filter_rating_group = BooleanFilter(booleans=[True] * len(df_business))
@@ -142,16 +154,42 @@ def create_scatter_components(df_business):
 
     checkboxes_weekdays.on_change('active', update_weekdays_visibility)
 
-    # Create scatter plots
     for weekday in weekdays:
         scatters_dict[weekday] = []
-        scatter = fig_scatter_kd.scatter(x=weekday + "_Hour_Of_Opening_Float",
-                                         y=weekday + "_Open_Duration_Float",
-                                         source=source,
-                                         size=4,
-                                         color=factor_cmap("Rating_Group", color_list, rating_groups),
-                                         alpha=default_scatter_alpha,
-                                         view=view)
+        scatter = fig_scatter_kd.scatter(
+            x=weekday + "_Hour_Of_Opening_Float",
+            y=weekday + "_Open_Duration_Float",
+            source=source,
+            size=6,
+            color=factor_cmap("Rating_Group", color_list, rating_groups),
+            alpha=default_scatter_alpha,
+            view=view,
+        )
+
+        # Define the appearance of selected data points
+        selected_circle = Circle(
+            x=weekday + "_Hour_Of_Opening_Float",
+            y=weekday + "_Open_Duration_Float",
+            fill_color='firebrick',
+            line_color='firebrick',
+            radius=0.2,
+            fill_alpha=1.0,
+            line_alpha=1.0,
+        )
+        scatter.selection_glyph = selected_circle
+
+        # Define the appearance of non-selected data points
+        nonselected_circle = Circle(
+            x=weekday + "_Hour_Of_Opening_Float",
+            y=weekday + "_Open_Duration_Float",
+            fill_color='gray',
+            line_color='gray',
+            radius=0.1,
+            fill_alpha=0.2,
+            line_alpha=0.2,
+        )
+        scatter.nonselection_glyph = nonselected_circle
+
         scatters_dict[weekday].append(scatter)
 
     return fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source
@@ -238,7 +276,7 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
         nonlocal contours_show, contours_dict
 
         if not contours_show:
-            print("Contours are hidden. Aborting contour computation.")
+            print("Contours are hidden. Hence no contour computation.")
             return
 
         if contours_dict:
@@ -332,9 +370,9 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
 
 # Function to create the complete dashboard layout
 
-def create_dashboard():
-    df_business = load_and_preprocess_data()
+def create_dashboard(df, source=None):
+    df_business = load_and_preprocess_data(df)
     fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source = create_scatter_components(df_business)
     btn_refresh, btn_toggle_kd = create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source)
     layout = column(checkboxes_rating_groups, checkboxes_weekdays, btn_refresh, btn_toggle_kd, fig_scatter_kd)
-    return layout
+    return layout, source
