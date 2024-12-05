@@ -28,8 +28,8 @@ def create_hexbin_plot(df, source):
         y_axis_type="mercator",
         x_range=(min_x, max_x),
         y_range=(min_y, max_y),
-        width=500,
-        height=500,
+        width=900,
+        height=600,
         tools="wheel_zoom,pan,reset,box_select,lasso_select",
     )
     p.add_tile(xyz.CartoDB.Positron, retina=True)
