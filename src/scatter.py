@@ -295,6 +295,7 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
 
         days_to_include = source_weekdays.data['days']
         rating_groups_to_include = source_rating_groups.data['Rating_Groups']
+        #categories_to_include = source.data['category_of_interest']
 
         if not days_to_include or not rating_groups_to_include:
             return
