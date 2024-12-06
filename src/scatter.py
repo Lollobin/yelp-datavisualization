@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from bokeh.layouts import column, Spacer
+from bokeh.layouts import column, Spacer, row
 from bokeh.models import (
     Button,
     CDSView,
@@ -15,6 +15,7 @@ from bokeh.models import (
     ColumnDataSource,
     Legend,
     LegendItem,
+    Div,
     Switch,
     BooleanFilter,
     MultiChoice  # Added for category selection
@@ -95,7 +96,8 @@ def create_scatter_components(df_business, categories_of_interest, source=None):
     category_selector = MultiChoice(
         title="Select Categories",
         value=categories_of_interest,
-        options=categories_of_interest
+        options=categories_of_interest,
+        width=120
     )
 
     # Create rating group checkbox
@@ -328,7 +330,7 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
     checkboxes_weekdays.on_change("active", delayer)
     checkboxes_rating_groups.on_change("active", delayer)
 
-    btn_refresh = Button(label="Refresh", button_type="success")
+    btn_refresh = Button(label="Refresh kernel", button_type="success")
 
     def refresh_btn_compute_kernel_density_plots():
         compute_kernel_density_plots()
@@ -359,15 +361,17 @@ def create_dashboard(df, source=None, categories_of_interest=None):
     df_business, categories_of_interest = load_and_preprocess_data(df, categories_of_interest)
     fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source = create_scatter_components(df_business, categories_of_interest, source)
     btn_refresh, btn_toggle_kd = create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source)
-
+   
+    label = Div(text="<b>Enable kernel:</b>")
+    sw_layout = row(label, btn_toggle_kd)
     # Add category_selector to the widget layout
     widget_layout = column(
         Spacer(height=50),
         category_selector,
         checkboxes_rating_groups,
         checkboxes_weekdays,
-        btn_refresh,
-        btn_toggle_kd
+        sw_layout,
+        btn_refresh
     )
     scatter_layout = fig_scatter_kd
     return scatter_layout, widget_layout, source

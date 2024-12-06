@@ -8,11 +8,11 @@ def create_historical_chart(df, categories_of_interest):
 
     # create a new plot with a title and axis labels
     p = figure(
-        title="Average Rating Throughout the Years by Category",
+        title="Rolling average Rating Throughout the Years by Category",
         x_axis_label="Year",
         y_axis_label="Average Rating",
         x_axis_type="datetime",
-        width=2100,
+        width=2200,
     )
 
     # Get a list of color-blind friendly colors of length = len(categories_of_interest)
