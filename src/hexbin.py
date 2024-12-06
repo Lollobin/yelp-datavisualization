@@ -5,7 +5,7 @@ from bokeh.models import ColumnDataSource, Circle
 from pyproj import Transformer, CRS
 import xyzservices.providers as xyz
 
-def create_hexbin_plot(df, source):
+def create_hexbin_plot(df, source, city):
     # Calculate web mercator coordinates
     in_proj = CRS.from_epsg(4326)  # WGS84
     out_proj = CRS.from_epsg(3857)  # Web Mercator
@@ -21,9 +21,9 @@ def create_hexbin_plot(df, source):
     min_x, max_x = df["x"].min(), df["x"].max()
     min_y, max_y = df["y"].min(), df["y"].max()
 
-    # Create plot
+    # Use the passed-in city to set the title
     p = figure(
-        title="Restaurants in Philadelphia",
+        title=f"Restaurants in {city}",
         x_axis_type="mercator",
         y_axis_type="mercator",
         x_range=(min_x, max_x),
@@ -36,33 +36,26 @@ def create_hexbin_plot(df, source):
     p.grid.visible = False
     p.axis.visible = False
 
-    # Add hexbin aggregation as background
-    # Unpack the tuple returned by hexbin
     hex_renderer, bins = p.hexbin(
         df["x"], df["y"], size=500, line_color=None, fill_alpha=0.5, syncable=False
     )
 
-    # Disable interactions on hexagons
     hex_renderer.nonselection_glyph = None
     hex_renderer.hover_glyph = None
     hex_renderer.muted_glyph = None
     hex_renderer.selection_glyph = None
 
-    # Plot circles using the shared source after hexbin, so they are on top
     circle_renderer = p.circle(
         x="x",
         y="y",
         source=source,
-        radius=100,  # Adjusted radius for better visibility
+        radius=100,
         fill_color="blue",
         line_color=None,
-        fill_alpha=0.5,  # Adjusted fill_alpha for better visibility
+        fill_alpha=0.5,
     )
 
-    selected_circle = Circle(
-        fill_color="firebrick", line_color=None, fill_alpha=0.8, radius=200  # Adjusted radius
-    )
-
+    selected_circle = Circle(fill_color="firebrick", line_color=None, fill_alpha=0.8, radius=200)
     circle_renderer.selection_glyph = selected_circle
 
     return p

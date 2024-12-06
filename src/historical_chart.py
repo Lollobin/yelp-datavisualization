@@ -2,13 +2,13 @@ from bokeh.plotting import figure
 from bokeh.palettes import Colorblind
 
 
-def create_historical_chart(df, categories_of_interest):
+def create_historical_chart(df, categories_of_interest, city):
 
     df = df[df.index.year > 2008]
 
     # create a new plot with a title and axis labels
     p = figure(
-        title="Rolling average Rating Throughout the Years by Category",
+        title=f"Average (rolling) Rating of {city} Throughout the Years by Category",
         x_axis_label="Year",
         y_axis_label="Average Rating",
         x_axis_type="datetime",

@@ -64,7 +64,7 @@ def load_and_preprocess_data(df, categories_of_interest):
     weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     rating_groups = ["Rating 1-2", "Rating 2-3", "Rating 3-4", "Rating 4-5"]
 
-    df_business["Rating_Group"] = pd.cut(df_business["stars"], bins=[1,2,3,4,5], labels=rating_groups)
+    df_business["Rating_Group"] = pd.cut(df_business["stars"], bins=[1,2,3,4,5], labels=rating_groups, right=True, include_lowest=True) #changed to right=True, include_lowest=True
 
     for day in weekdays:
         df_business = df_business[df_business["hours_" + day] != "Closed"]
@@ -74,7 +74,7 @@ def load_and_preprocess_data(df, categories_of_interest):
     return df_business, categories_of_interest
 
 
-def create_scatter_components(df_business, categories_of_interest, source=None):
+def create_scatter_components(df_business, categories_of_interest, source=None, city=None):
     if source is None:
         source = ColumnDataSource(df_business)
     else:
@@ -92,6 +92,11 @@ def create_scatter_components(df_business, categories_of_interest, source=None):
     combined_booleans = [rg and cat for rg, cat in zip(filter_rating_group.booleans, filter_category.booleans)]
     combined_filter = BooleanFilter(booleans=combined_booleans)
 
+    #print("Rating booleans:", filter_rating_group.booleans)
+    #print("Category booleans:", filter_category.booleans)
+    #print("Combined booleans:", combined_filter.booleans)
+
+
     # Create the category selector
     category_selector = MultiChoice(
         title="Select Categories",
@@ -108,7 +113,7 @@ def create_scatter_components(df_business, categories_of_interest, source=None):
     fig_scatter_kd = figure(
         width=900,
         height=600,
-        title="Opening Hours and Durations of Restaurants",
+        title=f"Opening Hours and Durations of Restaurants in {city}",
         x_axis_label="Opening Hour",
         y_axis_label="Duration",
         x_range=(0, 25),
@@ -357,20 +362,20 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
     return btn_refresh, btn_toggle_kd
 
 
-def create_dashboard(df, source=None, categories_of_interest=None):
+def create_dashboard(df, source=None, categories_of_interest=None, city=None):
     df_business, categories_of_interest = load_and_preprocess_data(df, categories_of_interest)
-    fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source = create_scatter_components(df_business, categories_of_interest, source)
+    fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source = create_scatter_components(df_business, categories_of_interest, source, city)
     btn_refresh, btn_toggle_kd = create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source)
    
     label = Div(text="<b>Enable kernel:</b>")
-    sw_layout = row(label, btn_toggle_kd)
+    toggle_layout = row(label, btn_toggle_kd)
     # Add category_selector to the widget layout
     widget_layout = column(
         Spacer(height=50),
         category_selector,
         checkboxes_rating_groups,
         checkboxes_weekdays,
-        sw_layout,
+        toggle_layout,
         btn_refresh
     )
     scatter_layout = fig_scatter_kd
