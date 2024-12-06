@@ -106,7 +106,7 @@ def create_scatter_components(df_business, categories_of_interest, source=None, 
     )
 
     # Create rating group checkbox
-    checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0, 3])
+    checkboxes_rating_groups = CheckboxGroup(labels=rating_groups, active=[0, 1, 2, 3])
     checkboxes_weekdays = CheckboxGroup(labels=weekdays, active=list(range(len(weekdays))))
 
     # Create figure
@@ -209,7 +209,7 @@ def create_scatter_components(df_business, categories_of_interest, source=None, 
 
 
 
-def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source):
+def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source):
     contours_dict = {}
     contours_show = False
     last_press_time = time.time()
@@ -284,6 +284,10 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
         nonlocal contours_show, contours_dict
 
         if not contours_show:
+            return
+        
+        if not category_selector.value or len(category_selector.value) == 0:
+            print("Aborting because no category is selected")
             return
 
         if contours_dict:
@@ -365,7 +369,7 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
 def create_dashboard(df, source=None, categories_of_interest=None, city=None):
     df_business, categories_of_interest = load_and_preprocess_data(df, categories_of_interest)
     fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source = create_scatter_components(df_business, categories_of_interest, source, city)
-    btn_refresh, btn_toggle_kd = create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, scatters_dict, source)
+    btn_refresh, btn_toggle_kd = create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rating_groups, checkboxes_weekdays, category_selector, scatters_dict, source)
    
     label = Div(text="<b>Enable kernel:</b>")
     toggle_layout = row(label, btn_toggle_kd)
