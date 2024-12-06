@@ -19,7 +19,7 @@ Group 24
 
 To see the dashboard, run this command from your command prompt:
 
-`bokeh serve --show main.py`
+`bokeh serve --show dash.py`
 
 Note: Your directory should be in the Dashboard folder.
 
