@@ -280,13 +280,53 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
                     fig.renderers.remove(c)
         contours_dict = {}
 
+
+# original code begins 
+
+    # def compute_kernel_density_plots():
+    #     nonlocal contours_show, contours_dict
+
+    #     if not contours_show:
+    #         return
+        
+    #     if not category_selector.value or len(category_selector.value) == 0:
+    #         print("Aborting because no category is selected")
+    #         return
+
+    #     if contours_dict:
+    #         remove_contours(fig_scatter_kd)
+
+    #     days_to_include = source_weekdays.data['days']
+    #     rating_groups_to_include = source_rating_groups.data['Rating_Groups']
+    #     #categories_to_include = source.data['category_of_interest']
+
+    #     if not days_to_include or not rating_groups_to_include:
+    #         return
+
+    #     for rating_group in rating_groups_to_include:
+    #         df_filtered = df_business[df_business['Rating_Group'] == rating_group]
+    #         df_concatenated = get_concatenated_x_and_y_from_days(df_filtered, days_to_include)
+    #         x = df_concatenated["Concatenated_Hour_Of_Opening_Float"]
+    #         y = df_concatenated["Concatenated_Open_Duration_Float"]
+    #         if x.empty or y.empty:
+    #             continue
+    #         contour = kde_plot(fig=fig_scatter_kd, x=x, y=y, color=color_dict[rating_group])
+    #         contour.name = "Contour_" + rating_group
+    #         contours_dict.setdefault(rating_group, []).append(contour)
+
+
+# original code ends
+# 
+# # new code begins
+
     def compute_kernel_density_plots():
         nonlocal contours_show, contours_dict
 
         if not contours_show:
             return
-        
-        if not category_selector.value or len(category_selector.value) == 0:
+
+        selected_categories = category_selector.value
+        if not selected_categories or len(selected_categories) == 0:
             print("Aborting because no category is selected")
             return
 
@@ -295,21 +335,37 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
 
         days_to_include = source_weekdays.data['days']
         rating_groups_to_include = source_rating_groups.data['Rating_Groups']
-        #categories_to_include = source.data['category_of_interest']
 
         if not days_to_include or not rating_groups_to_include:
             return
 
         for rating_group in rating_groups_to_include:
-            df_filtered = df_business[df_business['Rating_Group'] == rating_group]
+            df_filtered = df_business[
+                (df_business['Rating_Group'] == rating_group) &
+                (df_business['category_of_interest'].isin(selected_categories))
+            ]
+
+            if df_filtered.empty:
+                print(f"No data available for rating group {rating_group} and selected categories.")
+                continue
+
             df_concatenated = get_concatenated_x_and_y_from_days(df_filtered, days_to_include)
+
             x = df_concatenated["Concatenated_Hour_Of_Opening_Float"]
             y = df_concatenated["Concatenated_Open_Duration_Float"]
+
             if x.empty or y.empty:
+                print(f"Concatenated data for {rating_group} is empty. Skipping KDE.")
                 continue
             contour = kde_plot(fig=fig_scatter_kd, x=x, y=y, color=color_dict[rating_group])
-            contour.name = "Contour_" + rating_group
-            contours_dict.setdefault(rating_group, []).append(contour)
+            if contour:
+                contour.name = "Contour_" + rating_group
+                contours_dict.setdefault(rating_group, []).append(contour)
+
+
+
+    # new code ends
+
 
     def check_timeout():
         nonlocal last_press_time

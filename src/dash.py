@@ -108,7 +108,7 @@ def rebuild_layout(city):
         Spacer(width=40), hexbin_plot, Spacer(width=60), scatter_layout, Spacer(width=100), widget_layout
     )
 
-    heading_col = row(Spacer(width=800), heading)
+    heading_col = column(heading, align="center")
 
     # city_selector and refresh button above heading for convenience
     control_row = row(Spacer(width=40), city_selector, Spacer(width=1800), btn_refresh )
@@ -120,7 +120,7 @@ def rebuild_layout(city):
             [row1],
             [historical_plot]
         ],
-        sizing_mode="scale_both"
+        sizing_mode="scale_height"
     )
     return layout
 
