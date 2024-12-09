@@ -49,10 +49,10 @@ def create_hexbin_plot(df, source, city):
         x="x",
         y="y",
         source=source,
-        radius=100,
-        fill_color="blue",
+        radius=70,
+        fill_color="#474747",
         line_color=None,
-        fill_alpha=0.5,
+        fill_alpha=0.2,
     )
 
     selected_circle = Circle(fill_color="firebrick", line_color=None, fill_alpha=0.8, radius=200)
