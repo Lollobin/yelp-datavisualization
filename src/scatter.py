@@ -257,9 +257,7 @@ def create_kernel_density_components(df_business, fig_scatter_kd, checkboxes_rat
                              'Concatenated_Open_Duration_Float': series_acc_y})
 
     def kde(x, y, N):
-        xmin, xmax = x.min(), x.max()
-        ymin, ymax = y.min(), y.max()
-        X, Y = np.mgrid[xmin:xmax:N*1j, ymin:ymax:N*1j]
+        X, Y = np.mgrid[0:24:N*1j, 0:24:N*1j]
         positions = np.vstack([X.ravel(), Y.ravel()])
         values = np.vstack([x, y])
         kernel = gaussian_kde(values)
