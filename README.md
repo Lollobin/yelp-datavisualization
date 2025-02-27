@@ -1,39 +1,30 @@
-# datavis-group24
+# Visualization of the Yelp Open Dataset
 
-A project for the course "Data Visualization" at Aarhus University.
+## Description
 
-Group 24
+This interactive visualization of the Yelp Open Dataset was developed for the course "Data Visualization" at Aarhus University. It allows the user to inspect temporal trends and correlations of opening times and ratings of restaurants. The process and findings are documented in `datavis_group_24_report.pdf`.
 
-- Eric Huber
-- Md Sadik Hasan Khan
-- Benno Kossatz
-- Andreas William Randrup Madsen
-
-## Setup
+## Getting Started
 
 1. Create a new virtual environment
-2. Install other requirements using `pip install -r requirements.txt`
+2. Install requirements using `pip install -r requirements.txt`
 3. Add data files to `/data/...` (<https://drive.google.com/drive/folders/1Bxcp7AepA0WYMYJPcHPyx1_qM6JBlRrj>)
 
-## Run
+4. To see the dashboard, run this command from your command prompt within the `src` directory: `bokeh serve --show dash.py`
 
-To see the dashboard, run this command from your command prompt:
+## Credits
 
-`bokeh serve --show dash.py`
+Collaborators
 
-Note: Your directory should be in the Dashboard folder.
+- [Eric Huber](<https://github.com/EricH-03>)
+- [Md Sadik Hasan Khan](<https://github.com/sadik9>)
+- [Benno Kossatz](<https://github.com/Lollobin>)
+- [Andreas William Randrup Madsen](<https://github.com/AndreasWRM>)
 
-## Git Workflow
+Resources
 
-Trunk based development: New features are developed on short-lived feature branches that are merged into the main branch frequently. Feature branches should not exist longer than one week before being merged into the main branch.
+- Data: [Yelp Open Dataset](<https://business.yelp.com/data/resources/open-dataset/>)
 
-Example of implementing a new feature:
+## License
 
-1. Create new branch with descriptive name (e.g. 'implement-mse-lossfunction')
-2. Implement the feature, commit frequently with descriptive commit messages.
-3. When implementation is finished:
-    - Merge main branch into feature branch to bring it up to the current state of development.
-    - Create pull request, assign other team members.
-    - Wait for pull request to be confirmed.
-    - Merge feature branch into main branch.
-    - Delete feature branch.
+This project is licensed under the MIT License.
