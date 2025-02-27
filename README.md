@@ -1,6 +1,8 @@
 # Visualization of the Yelp Open Dataset
 
-## Description
+![image_1_overview](https://github.com/user-attachments/assets/13fbe397-cc44-4c68-8a77-946733bbd762)
+
+## Description 
 
 This interactive visualization of the Yelp Open Dataset was developed for the course "Data Visualization" at Aarhus University. It allows the user to inspect temporal trends and correlations of opening times and ratings of restaurants. The process and findings are documented in `datavis_group_24_report.pdf`.
 
